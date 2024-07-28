@@ -71,9 +71,6 @@ class MainWindow(QMainWindow):
         self.column_selector.addItem("Por defecto (documento_1, documento_2, ...)")
         self.column_selector.addItems(columns)
 
-    # ui/main_windows.py
-
-
     def generate_documents(self):
         if not self.word_template_path or not self.excel_file_path:
             QMessageBox.warning(self, "Error", "Por favor, carga una plantilla Word y un archivo Excel antes de continuar.")
@@ -93,15 +90,21 @@ class MainWindow(QMainWindow):
         
         static_values = {}
         increment_columns = set()
+        minute_columns = set()
+        hour_columns = set()
 
         if missing_columns:
             dialog = MissingColumnsDialog(missing_columns, self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 values = dialog.get_values()
-                for column, (value, increment) in values.items():
+                for column, (value, increment, is_minute, is_hour) in values.items():
                     static_values[column] = value
                     if increment:
                         increment_columns.add(column)
+                    if is_minute:
+                        minute_columns.add(column)
+                    if is_hour:
+                        hour_columns.add(column)
             else:
                 return  # User cancelled the operation
 
@@ -116,11 +119,7 @@ class MainWindow(QMainWindow):
         selected_column = self.column_selector.currentText()
 
         try:
-            for index, row_data in enumerate(data_list):
-                # Crear una copia de los datos de la fila para no modificar el original
-                data = row_data.copy()
-                
-                # Agregar valores estáticos y manejar incrementos
+            for index, data in enumerate(data_list):
                 for column, value in static_values.items():
                     if column in increment_columns:
                         try:
@@ -130,27 +129,39 @@ class MainWindow(QMainWindow):
                     else:
                         data[column] = value
 
-                # Agregar fecha
+                # Update placeholders in data with the correct datetime values
                 data['fecha'] = format_datetime(start_datetime)
-                
-                # Generar nombre de archivo
+                data['hora'] = start_datetime.hour
+                data['minuto'] = start_datetime.minute
+
+                for column in minute_columns:
+                    if column in data:
+                        minute_value = int(data[column])
+                        if minute_value >= 60:
+                            hour_increment = minute_value // 60
+                            minute_value = minute_value % 60
+                            start_datetime = increment_datetime(start_datetime, hour_increment * 60)
+                        data[column] = str(minute_value)
+
+                for column in hour_columns:
+                    if column in data:
+                        hour_value = int(data[column])
+                        if hour_value >= 24:
+                            day_increment = hour_value // 24
+                            hour_value = hour_value % 24
+                            start_datetime = increment_datetime(start_datetime, day_increment * 1440)
+                        data[column] = str(hour_value)
+
                 if selected_column == "Por defecto (documento_1, documento_2, ...)":
-                    output_filename = f"documento_{index + 1}"
+                    output_path = os.path.join(output_dir, generate_output_filename("documento", index + 1))
                 else:
                     output_filename = self.filename_format.text().replace("{{columna}}", str(data.get(selected_column, "")))
+                    output_path = os.path.join(output_dir, generate_output_filename(output_filename, index + 1))
                 
-                output_path = os.path.join(output_dir, generate_output_filename(output_filename, index + 1))
-                
-                # Generar y guardar el documento
                 doc = doc_generator.generate_document(data)
                 doc_generator.save_document(doc, output_path)
-                
-                # Incrementar la fecha para el siguiente documento
                 start_datetime = increment_datetime(start_datetime, 1)
-                
-                # Actualizar la barra de progreso
                 progress_dialog.update_progress(index + 1)
-            
             QMessageBox.information(self, "Proceso Completo", f"Se generaron {len(data_list)} documentos exitosamente en {output_dir}")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Ocurrió un error durante la generación de documentos: {str(e)}")
