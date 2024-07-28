@@ -1,3 +1,4 @@
+#core.documentgenerator
 from docx import Document
 import re
 
