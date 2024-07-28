@@ -1,4 +1,5 @@
-#core.excel parser
+# core/excel_parser.py
+
 import pandas as pd
 
 class ExcelParser:

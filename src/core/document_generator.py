@@ -1,13 +1,13 @@
-#core.documentgenerator
+# core/document_generator.py
+
 from docx import Document
-import re
 
 class DocumentGenerator:
     def __init__(self, template_path):
-        self.template = Document(template_path)
+        self.template_path = template_path
 
     def generate_document(self, data):
-        doc = self.template
+        doc = Document(self.template_path)
         for p in doc.paragraphs:
             self.replace_placeholders(p, data)
         for table in doc.tables:
@@ -21,7 +21,9 @@ class DocumentGenerator:
             if isinstance(value, (int, float)):
                 value = str(value)
             placeholder = '{{' + key + '}}'
-            container.text = container.text.replace(placeholder, value)
+            if placeholder in container.text:
+                container.text = container.text.replace(placeholder, value)
 
     def save_document(self, doc, output_path):
         doc.save(output_path)
+

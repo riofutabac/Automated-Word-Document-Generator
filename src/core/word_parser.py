@@ -15,4 +15,3 @@ class WordParser:
                 for cell in row.cells:
                     placeholders.update(re.findall(r'\{\{(\w+)\}\}', cell.text))
         return list(placeholders)
-

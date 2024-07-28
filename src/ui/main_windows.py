@@ -1,5 +1,4 @@
-#ui.mainwidnows
-from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget, QMessageBox, QDateTimeEdit, QLabel, QHBoxLayout, QLineEdit
+from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget, QMessageBox, QDateTimeEdit, QLabel, QHBoxLayout, QLineEdit, QComboBox, QDialog
 from PyQt6.QtCore import QDateTime
 from ui.file_loader import load_word_file, load_excel_file, select_output_directory
 from core.document_generator import DocumentGenerator
@@ -8,6 +7,7 @@ from core.word_parser import WordParser
 from utils.date_utils import increment_datetime, format_datetime
 from utils.file_utils import create_output_directory, generate_output_filename
 from ui.progress_dialog import ProgressDialog
+from ui.missing_columns_dialog import MissingColumnsDialog
 import os
 from datetime import datetime
 
@@ -41,6 +41,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("Formato de nombre de archivo:"))
         layout.addWidget(self.filename_format)
 
+        self.column_selector = QComboBox()
+        layout.addWidget(QLabel("Seleccionar columna para nombre de archivo:"))
+        layout.addWidget(self.column_selector)
+
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
@@ -58,6 +62,17 @@ class MainWindow(QMainWindow):
         self.excel_file_path = load_excel_file(self)
         if self.excel_file_path:
             QMessageBox.information(self, "Archivo Cargado", f"Archivo Excel cargado: {self.excel_file_path}")
+            self.update_column_selector()
+
+    def update_column_selector(self):
+        excel_parser = ExcelParser(self.excel_file_path)
+        columns = excel_parser.get_columns()
+        self.column_selector.clear()
+        self.column_selector.addItem("Por defecto (documento_1, documento_2, ...)")
+        self.column_selector.addItems(columns)
+
+    # ui/main_windows.py
+
 
     def generate_documents(self):
         if not self.word_template_path or not self.excel_file_path:
@@ -76,9 +91,19 @@ class MainWindow(QMainWindow):
         excel_parser = ExcelParser(self.excel_file_path)
         missing_columns = excel_parser.validate_columns(placeholders)
         
+        static_values = {}
+        increment_columns = set()
+
         if missing_columns:
-            QMessageBox.warning(self, "Columnas faltantes", f"Las siguientes columnas no están en el Excel: {', '.join(missing_columns)}")
-            return
+            dialog = MissingColumnsDialog(missing_columns, self)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                values = dialog.get_values()
+                for column, (value, increment) in values.items():
+                    static_values[column] = value
+                    if increment:
+                        increment_columns.add(column)
+            else:
+                return  # User cancelled the operation
 
         data_list = excel_parser.get_data()
         doc_generator = DocumentGenerator(self.word_template_path)
@@ -87,16 +112,45 @@ class MainWindow(QMainWindow):
         progress_dialog.setRange(0, len(data_list))
         progress_dialog.show()
 
-        start_datetime = self.datetime_edit.dateTime().toPython()
-        
+        start_datetime = self.datetime_edit.dateTime().toPyDateTime()
+        selected_column = self.column_selector.currentText()
+
         try:
-            for index, data in enumerate(data_list):
+            for index, row_data in enumerate(data_list):
+                # Crear una copia de los datos de la fila para no modificar el original
+                data = row_data.copy()
+                
+                # Agregar valores estáticos y manejar incrementos
+                for column, value in static_values.items():
+                    if column in increment_columns:
+                        try:
+                            data[column] = str(int(value) + index)
+                        except ValueError:
+                            data[column] = value
+                    else:
+                        data[column] = value
+
+                # Agregar fecha
                 data['fecha'] = format_datetime(start_datetime)
-                output_path = os.path.join(output_dir, generate_output_filename(self.filename_format.text().format(**data), index + 1))
+                
+                # Generar nombre de archivo
+                if selected_column == "Por defecto (documento_1, documento_2, ...)":
+                    output_filename = f"documento_{index + 1}"
+                else:
+                    output_filename = self.filename_format.text().replace("{{columna}}", str(data.get(selected_column, "")))
+                
+                output_path = os.path.join(output_dir, generate_output_filename(output_filename, index + 1))
+                
+                # Generar y guardar el documento
                 doc = doc_generator.generate_document(data)
                 doc_generator.save_document(doc, output_path)
+                
+                # Incrementar la fecha para el siguiente documento
                 start_datetime = increment_datetime(start_datetime, 1)
+                
+                # Actualizar la barra de progreso
                 progress_dialog.update_progress(index + 1)
+            
             QMessageBox.information(self, "Proceso Completo", f"Se generaron {len(data_list)} documentos exitosamente en {output_dir}")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Ocurrió un error durante la generación de documentos: {str(e)}")
