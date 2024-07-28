@@ -1,6 +1,4 @@
 #ui.mainwidnows
-from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget
-
 from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget, QMessageBox
 from ui.file_loader import load_word_file, load_excel_file
 from core.document_generator import DocumentGenerator
@@ -10,6 +8,7 @@ from utils.date_utils import increment_datetime, format_datetime
 from utils.file_utils import create_output_directory, generate_output_filename
 from ui.progress_dialog import ProgressDialog
 import os
+from datetime import datetime  # Importar datetime
 
 class MainWindow(QMainWindow):
     def __init__(self):

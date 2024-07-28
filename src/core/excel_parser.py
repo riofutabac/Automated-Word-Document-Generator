@@ -10,3 +10,7 @@ class ExcelParser:
 
     def get_data(self):
         return self.df.to_dict('records')
+    
+    def validate_columns(self, required_columns):
+        missing_columns = set(required_columns) - set(self.get_columns())
+        return list(missing_columns)
