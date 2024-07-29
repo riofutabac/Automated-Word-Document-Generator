@@ -1,6 +1,6 @@
 # ui/mainwindow.py
 
-from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget, QMessageBox, QLineEdit, QComboBox, QDialog, QLabel, QCheckBox
+from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget, QMessageBox, QLineEdit, QComboBox, QDialog, QLabel, QCheckBox, QHBoxLayout
 from ui.file_loader import load_word_file, load_excel_file, select_output_directory
 from core.document_generator import DocumentGenerator
 from core.excel_parser import ExcelParser
@@ -23,25 +23,51 @@ class MainWindow(QMainWindow):
 
         layout = QVBoxLayout()
         
+        # Botones de carga
         self.load_word_btn = QPushButton("Cargar Plantilla Word")
         self.load_excel_btn = QPushButton("Cargar Archivo Excel")
         self.generate_btn = QPushButton("Generar Documentos")
 
         layout.addWidget(self.load_word_btn)
         layout.addWidget(self.load_excel_btn)
-        layout.addWidget(self.generate_btn)
 
-        self.filename_format = QLineEdit("documento_{{nombre}}")
+        # Mostrar nombres de archivos cargados
+        self.word_file_label = QLabel("")
+        self.excel_file_label = QLabel("")
+        layout.addWidget(self.word_file_label)
+        layout.addWidget(self.excel_file_label)
+
+        # Formato de nombre de archivo
+        self.filename_format = QLineEdit("documento")
         layout.addWidget(QLabel("Formato de nombre de archivo:"))
         layout.addWidget(self.filename_format)
 
+        # Separador personalizado
+        self.separator_input = QLineEdit("_")
+        layout.addWidget(QLabel("Separador personalizado:"))
+        layout.addWidget(self.separator_input)
+
+        # Checkbox para habilitar selección de columna
+        self.use_column_checkbox = QCheckBox("Usar columna del Excel para nombres de archivo")
+        layout.addWidget(self.use_column_checkbox)
+        
+        # Selector de columnas
         self.column_selector = QComboBox()
+        self.column_selector.setEnabled(False)
         layout.addWidget(QLabel("Seleccionar columna para nombre de archivo:"))
         layout.addWidget(self.column_selector)
         
         self.enumerate_checkbox = QCheckBox("Incluir enumeración al final del nombre del archivo")
         self.enumerate_checkbox.setChecked(True)
         layout.addWidget(self.enumerate_checkbox)
+
+        # Ejemplo de nombre de archivo
+        self.example_label = QLabel("")
+        layout.addWidget(QLabel("Ejemplo de nombre de archivo:"))
+        layout.addWidget(self.example_label)
+
+        # Botón para generar documentos
+        layout.addWidget(self.generate_btn)
 
         container = QWidget()
         container.setLayout(layout)
@@ -50,24 +76,44 @@ class MainWindow(QMainWindow):
         self.load_word_btn.clicked.connect(self.load_word_template)
         self.load_excel_btn.clicked.connect(self.load_excel_file)
         self.generate_btn.clicked.connect(self.generate_documents)
+        self.use_column_checkbox.stateChanged.connect(self.toggle_column_selector)
+        self.filename_format.textChanged.connect(self.update_example_filename)
+        self.column_selector.currentIndexChanged.connect(self.update_example_filename)
+        self.separator_input.textChanged.connect(self.update_example_filename)
 
     def load_word_template(self):
         self.word_template_path = load_word_file(self)
         if self.word_template_path:
-            QMessageBox.information(self, "Plantilla Cargada", f"Plantilla Word cargada: {self.word_template_path}")
+            self.word_file_label.setText(f"Plantilla Word cargada: {self.word_template_path}")
 
     def load_excel_file(self):
         self.excel_file_path = load_excel_file(self)
         if self.excel_file_path:
-            QMessageBox.information(self, "Archivo Cargado", f"Archivo Excel cargado: {self.excel_file_path}")
+            self.excel_file_label.setText(f"Archivo Excel cargado: {self.excel_file_path}")
             self.update_column_selector()
 
     def update_column_selector(self):
         excel_parser = ExcelParser(self.excel_file_path)
         columns = excel_parser.get_columns()
         self.column_selector.clear()
-        self.column_selector.addItem("Por defecto (documento_1, documento_2, ...)")
         self.column_selector.addItems(columns)
+        self.update_example_filename()
+
+    def toggle_column_selector(self):
+        self.column_selector.setEnabled(self.use_column_checkbox.isChecked())
+        self.update_example_filename()
+
+    def update_example_filename(self):
+        base_name = self.filename_format.text()
+        separator = self.separator_input.text()
+        if self.use_column_checkbox.isChecked():
+            selected_column = self.column_selector.currentText()
+            example_name = f"{base_name}{separator}{{valor_de_{selected_column}}}"
+        else:
+            example_name = base_name
+        if self.enumerate_checkbox.isChecked():
+            example_name += f"{separator}1"
+        self.example_label.setText(example_name)
 
     def generate_documents(self):
         if not self.word_template_path or not self.excel_file_path:
@@ -118,6 +164,7 @@ class MainWindow(QMainWindow):
 
         selected_column = self.column_selector.currentText()
         include_enumeration = self.enumerate_checkbox.isChecked()
+        separator = self.separator_input.text()
 
         try:
             for index, data in enumerate(data_list):
@@ -159,11 +206,8 @@ class MainWindow(QMainWindow):
                         data[column] = str(hour_value)
 
                 output_filename = self.filename_format.text()
-                for key, value in data.items():
-                    placeholder = f"{{{{{key}}}}}"
-                    if placeholder in output_filename:
-                        output_filename = output_filename.replace(placeholder, str(value).replace(" ", "_"))
-
+                if self.use_column_checkbox.isChecked() and selected_column in data:
+                    output_filename += f"{separator}{data[selected_column]}"
                 if include_enumeration:
                     output_filename = generate_output_filename(output_filename, index + 1)
                 else:
