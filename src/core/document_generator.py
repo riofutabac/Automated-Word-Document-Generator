@@ -1,5 +1,5 @@
 # core/document_generator.py
-
+# core/document_generator.py
 from docx import Document
 
 class DocumentGenerator:
@@ -13,18 +13,16 @@ class DocumentGenerator:
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
-                    self.replace_placeholders(cell, data)
+                    for p in cell.paragraphs:
+                        self.replace_placeholders(p, data)
         return doc
 
-    def replace_placeholders(self, container, data):
+    def replace_placeholders(self, paragraph, data):
         for key, value in data.items():
-            if isinstance(value, (int, float)):
-                value = str(value)
-            placeholder = '{{' + key + '}}'
-            if placeholder in container.text:
-                container.text = container.text.replace(placeholder, value)
+            placeholder = f'{{{{{key}}}}}'
+            if placeholder in paragraph.text:
+                paragraph.text = paragraph.text.replace(placeholder, str(value))
+                # Esto reemplaza el texto completo del párrafo y asegura que el placeholder es sustituido
 
     def save_document(self, doc, output_path):
         doc.save(output_path)
-        
-        

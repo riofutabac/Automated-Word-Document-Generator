@@ -1,5 +1,6 @@
 #ui.fileloader
 from PyQt6.QtWidgets import QFileDialog
+import pandas as pd
 
 def load_word_file(parent):
     file_name, _ = QFileDialog.getOpenFileName(parent, "Seleccionar Plantilla Word", "", "Word Files (*.docx)")

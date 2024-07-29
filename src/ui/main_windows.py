@@ -5,6 +5,7 @@ from ui.file_loader import load_word_file, load_excel_file, select_output_direct
 from core.document_generator import DocumentGenerator
 from core.excel_parser import ExcelParser
 from core.word_parser import WordParser
+from core.excel_parser import ExcelParser
 from utils.date_utils import increment_datetime, format_datetime
 from utils.file_utils import create_output_directory, generate_output_filename
 from ui.progress_dialog import ProgressDialog
@@ -14,6 +15,7 @@ from datetime import datetime
 
 class MainWindow(QMainWindow):
     def __init__(self):
+        
         super().__init__()
         self.setWindowTitle("Generador de Documentos")
         self.setGeometry(100, 100, 600, 400)
@@ -116,6 +118,8 @@ class MainWindow(QMainWindow):
             example_name += f"{separator}1"
         self.example_label.setText(example_name)
 
+    # mainwindow.py
+
     def generate_documents(self):
         if not self.word_template_path or not self.excel_file_path:
             QMessageBox.warning(self, "Error", "Por favor, carga una plantilla Word y un archivo Excel antes de continuar.")
@@ -137,6 +141,7 @@ class MainWindow(QMainWindow):
         increment_columns = set()
         minute_columns = set()
         hour_columns = set()
+        numeric_columns = set()
 
         start_datetime = datetime.now()
         use_current_time = True
@@ -145,7 +150,7 @@ class MainWindow(QMainWindow):
             dialog = MissingColumnsDialog(missing_columns, self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 values, use_current_time, start_datetime = dialog.get_values()
-                for column, (value, increment, is_minute, is_hour) in values.items():
+                for column, (value, increment, is_minute, is_hour, is_numeric) in values.items():
                     static_values[column] = value
                     if increment:
                         increment_columns.add(column)
@@ -153,6 +158,9 @@ class MainWindow(QMainWindow):
                         minute_columns.add(column)
                     if is_hour:
                         hour_columns.add(column)
+                    if is_numeric:
+                        numeric_columns.add(column)
+                print(f"Static values: {static_values}")  # Depuración adicional
             else:
                 return  # User cancelled the operation
 
@@ -188,23 +196,13 @@ class MainWindow(QMainWindow):
                     data['hora'] = str(start_datetime.hour).zfill(2)
                     data['minuto'] = str(start_datetime.minute).zfill(2)
 
-                for column in minute_columns:
-                    if column in data:
-                        minute_value = int(data[column])
-                        if minute_value >= 60:
-                            hour_increment = minute_value // 60
-                            minute_value = minute_value % 60
-                            start_datetime = increment_datetime(start_datetime, hour_increment * 60)
-                        data[column] = str(minute_value).zfill(2)
+                # Añadir lógica para 'codigopostal'
+                if 'codigopostal' in static_values:
+                    data['codigopostal'] = static_values['codigopostal']
+                    if 'codigopostal' in increment_columns:
+                        data['codigopostal'] = str(int(static_values['codigopostal']) + index).zfill(len(static_values['codigopostal']))
 
-                for column in hour_columns:
-                    if column in data:
-                        hour_value = int(data[column])
-                        if hour_value >= 24:
-                            day_increment = hour_value // 24
-                            hour_value = hour_value % 24
-                            start_datetime = increment_datetime(start_datetime, day_increment * 1440)
-                        data[column] = str(hour_value).zfill(2)
+                print(f"Data for document {index}: {data}")  # Añadir mensaje de depuración
 
                 output_filename = self.filename_format.text()
                 if self.use_column_checkbox.isChecked() and selected_column in data:
@@ -216,6 +214,7 @@ class MainWindow(QMainWindow):
 
                 output_path = os.path.join(output_dir, output_filename)
                 
+    
                 doc = doc_generator.generate_document(data)
                 doc_generator.save_document(doc, output_path)
                 start_datetime = increment_datetime(start_datetime, 1)

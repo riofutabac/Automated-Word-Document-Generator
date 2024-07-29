@@ -14,4 +14,5 @@ class WordParser:
             for row in table.rows:
                 for cell in row.cells:
                     placeholders.update(re.findall(r'\{\{(\w+)\}\}', cell.text))
+        print(f"Placeholders found: {placeholders}")  # Add this line
         return list(placeholders)

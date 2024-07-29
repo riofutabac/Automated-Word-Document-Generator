@@ -4,14 +4,15 @@ import pandas as pd
 
 class ExcelParser:
     def __init__(self, excel_path):
-        self.df = pd.read_excel(excel_path)
+        self.excel_path = excel_path
+        self.data_frame = pd.read_excel(excel_path, dtype=str)  # Asegurar que todos los datos se leen como texto
 
     def get_columns(self):
-        return list(self.df.columns)
+        return self.data_frame.columns.tolist()
+
+    def validate_columns(self, placeholders):
+        missing_columns = [col for col in placeholders if col not in self.data_frame.columns]
+        return missing_columns
 
     def get_data(self):
-        return self.df.to_dict('records')
-    
-    def validate_columns(self, required_columns):
-        missing_columns = set(required_columns) - set(self.get_columns())
-        return list(missing_columns)
+        return self.data_frame.to_dict(orient='records')
