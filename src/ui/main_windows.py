@@ -80,6 +80,7 @@ class MainWindow(QMainWindow):
         self.filename_format.textChanged.connect(self.update_example_filename)
         self.column_selector.currentIndexChanged.connect(self.update_example_filename)
         self.separator_input.textChanged.connect(self.update_example_filename)
+        self.enumerate_checkbox.stateChanged.connect(self.update_example_filename)
 
     def load_word_template(self):
         self.word_template_path = load_word_file(self)
@@ -180,12 +181,12 @@ class MainWindow(QMainWindow):
                 if use_current_time:
                     current_datetime = datetime.now()
                     data['fecha'] = format_datetime(current_datetime)
-                    data['hora'] = current_datetime.hour
-                    data['minuto'] = current_datetime.minute
+                    data['hora'] = str(current_datetime.hour).zfill(2)
+                    data['minuto'] = str(current_datetime.minute).zfill(2)
                 else:
                     data['fecha'] = format_datetime(start_datetime)
-                    data['hora'] = start_datetime.hour
-                    data['minuto'] = start_datetime.minute
+                    data['hora'] = str(start_datetime.hour).zfill(2)
+                    data['minuto'] = str(start_datetime.minute).zfill(2)
 
                 for column in minute_columns:
                     if column in data:
@@ -194,7 +195,7 @@ class MainWindow(QMainWindow):
                             hour_increment = minute_value // 60
                             minute_value = minute_value % 60
                             start_datetime = increment_datetime(start_datetime, hour_increment * 60)
-                        data[column] = str(minute_value)
+                        data[column] = str(minute_value).zfill(2)
 
                 for column in hour_columns:
                     if column in data:
@@ -203,7 +204,7 @@ class MainWindow(QMainWindow):
                             day_increment = hour_value // 24
                             hour_value = hour_value % 24
                             start_datetime = increment_datetime(start_datetime, day_increment * 1440)
-                        data[column] = str(hour_value)
+                        data[column] = str(hour_value).zfill(2)
 
                 output_filename = self.filename_format.text()
                 if self.use_column_checkbox.isChecked() and selected_column in data:

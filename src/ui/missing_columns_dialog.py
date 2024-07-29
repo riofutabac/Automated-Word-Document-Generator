@@ -16,7 +16,9 @@ class MissingColumnsDialog(QDialog):
         datetime_layout = QHBoxLayout()
         self.datetime_edit = QDateTimeEdit(QDateTime.currentDateTime())
         self.datetime_edit.setDisplayFormat("dd/MM/yyyy HH:mm")
-        self.confirm_time_button = QPushButton("Confirmar minutos y hora actuales")
+        self.datetime_edit.setFixedWidth(200)  # Ajustar el ancho para que la hora sea visible
+        self.confirm_time_button = QPushButton("Confirmar")
+        self.confirm_time_button.setFixedWidth(100)  # Ajustar el ancho del botón
         datetime_layout.addWidget(QLabel("Fecha y hora inicial:"))
         datetime_layout.addWidget(self.datetime_edit)
         datetime_layout.addWidget(self.confirm_time_button)
@@ -28,9 +30,13 @@ class MissingColumnsDialog(QDialog):
 
             label = QLabel(f"Valor para '{column}':")
             input_field = QLineEdit()
+            input_field.setEnabled(False)
             increment_checkbox = QCheckBox("Incrementar")
+            increment_checkbox.setEnabled(False)
             minute_checkbox = QCheckBox("Minuto")
+            minute_checkbox.setEnabled(False)
             hour_checkbox = QCheckBox("Hora")
+            hour_checkbox.setEnabled(False)
 
             self.inputs[column] = input_field
             self.increment_checkboxes[column] = increment_checkbox
@@ -49,39 +55,45 @@ class MissingColumnsDialog(QDialog):
             self.layout.addLayout(row_layout)
 
         self.confirm_button = QPushButton("Confirmar")
+        self.confirm_button.setEnabled(False)
         self.confirm_button.clicked.connect(self.validate_and_accept)
         self.layout.addWidget(self.confirm_button)
 
     def lock_time_settings(self):
         self.datetime_edit.setEnabled(False)
         self.confirm_time_button.setEnabled(False)
+        self.confirm_button.setEnabled(True)
+        for input_field in self.inputs.values():
+            input_field.setEnabled(True)
+        for increment_checkbox in self.increment_checkboxes.values():
+            increment_checkbox.setEnabled(True)
         for minute_checkbox in self.minute_checkboxes.values():
-            minute_checkbox.setEnabled(False)
+            minute_checkbox.setEnabled(True)
         for hour_checkbox in self.hour_checkboxes.values():
-            hour_checkbox.setEnabled(False)
+            hour_checkbox.setEnabled(True)
 
     def update_checkbox_state(self, column, type):
         if type == "minute":
             if self.minute_checkboxes[column].isChecked():
+                self.inputs[column].setText(str(self.datetime_edit.dateTime().time().minute()))
+                self.inputs[column].setEnabled(False)
                 self.hour_checkboxes[column].setEnabled(False)
-                for key, checkbox in self.minute_checkboxes.items():
-                    if key != column:
-                        checkbox.setEnabled(False)
+                self.increment_checkboxes[column].setEnabled(True)
             else:
+                self.inputs[column].setEnabled(True)
                 self.hour_checkboxes[column].setEnabled(True)
-                for key, checkbox in self.minute_checkboxes.items():
-                    checkbox.setEnabled(True)
+                self.increment_checkboxes[column].setEnabled(False)
 
         elif type == "hour":
             if self.hour_checkboxes[column].isChecked():
+                self.inputs[column].setText(str(self.datetime_edit.dateTime().time().hour()))
+                self.inputs[column].setEnabled(False)
                 self.minute_checkboxes[column].setEnabled(False)
-                for key, checkbox in self.hour_checkboxes.items():
-                    if key != column:
-                        checkbox.setEnabled(False)
+                self.increment_checkboxes[column].setEnabled(True)
             else:
+                self.inputs[column].setEnabled(True)
                 self.minute_checkboxes[column].setEnabled(True)
-                for key, checkbox in self.hour_checkboxes.items():
-                    checkbox.setEnabled(True)
+                self.increment_checkboxes[column].setEnabled(False)
 
     def validate_and_accept(self):
         minute_checked = any(checkbox.isChecked() for checkbox in self.minute_checkboxes.values())
