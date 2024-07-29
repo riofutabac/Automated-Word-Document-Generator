@@ -1,5 +1,6 @@
-from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget, QMessageBox, QDateTimeEdit, QLabel, QHBoxLayout, QLineEdit, QComboBox, QDialog
-from PyQt6.QtCore import QDateTime
+# ui/mainwindow.py
+
+from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget, QMessageBox, QLineEdit, QComboBox, QDialog, QLabel, QCheckBox
 from ui.file_loader import load_word_file, load_excel_file, select_output_directory
 from core.document_generator import DocumentGenerator
 from core.excel_parser import ExcelParser
@@ -30,13 +31,6 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.load_excel_btn)
         layout.addWidget(self.generate_btn)
 
-        datetime_layout = QHBoxLayout()
-        self.datetime_edit = QDateTimeEdit(QDateTime.currentDateTime())
-        self.datetime_edit.setDisplayFormat("dd/MM/yyyy HH:mm")
-        datetime_layout.addWidget(QLabel("Fecha y hora inicial:"))
-        datetime_layout.addWidget(self.datetime_edit)
-        layout.addLayout(datetime_layout)
-
         self.filename_format = QLineEdit("documento_{{nombre}}")
         layout.addWidget(QLabel("Formato de nombre de archivo:"))
         layout.addWidget(self.filename_format)
@@ -44,6 +38,10 @@ class MainWindow(QMainWindow):
         self.column_selector = QComboBox()
         layout.addWidget(QLabel("Seleccionar columna para nombre de archivo:"))
         layout.addWidget(self.column_selector)
+        
+        self.enumerate_checkbox = QCheckBox("Incluir enumeración al final del nombre del archivo")
+        self.enumerate_checkbox.setChecked(True)
+        layout.addWidget(self.enumerate_checkbox)
 
         container = QWidget()
         container.setLayout(layout)
@@ -93,10 +91,13 @@ class MainWindow(QMainWindow):
         minute_columns = set()
         hour_columns = set()
 
+        start_datetime = datetime.now()
+        use_current_time = True
+
         if missing_columns:
             dialog = MissingColumnsDialog(missing_columns, self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
-                values = dialog.get_values()
+                values, use_current_time, start_datetime = dialog.get_values()
                 for column, (value, increment, is_minute, is_hour) in values.items():
                     static_values[column] = value
                     if increment:
@@ -115,8 +116,8 @@ class MainWindow(QMainWindow):
         progress_dialog.setRange(0, len(data_list))
         progress_dialog.show()
 
-        start_datetime = self.datetime_edit.dateTime().toPyDateTime()
         selected_column = self.column_selector.currentText()
+        include_enumeration = self.enumerate_checkbox.isChecked()
 
         try:
             for index, data in enumerate(data_list):
@@ -129,10 +130,15 @@ class MainWindow(QMainWindow):
                     else:
                         data[column] = value
 
-                # Update placeholders in data with the correct datetime values
-                data['fecha'] = format_datetime(start_datetime)
-                data['hora'] = start_datetime.hour
-                data['minuto'] = start_datetime.minute
+                if use_current_time:
+                    current_datetime = datetime.now()
+                    data['fecha'] = format_datetime(current_datetime)
+                    data['hora'] = current_datetime.hour
+                    data['minuto'] = current_datetime.minute
+                else:
+                    data['fecha'] = format_datetime(start_datetime)
+                    data['hora'] = start_datetime.hour
+                    data['minuto'] = start_datetime.minute
 
                 for column in minute_columns:
                     if column in data:
@@ -152,11 +158,18 @@ class MainWindow(QMainWindow):
                             start_datetime = increment_datetime(start_datetime, day_increment * 1440)
                         data[column] = str(hour_value)
 
-                if selected_column == "Por defecto (documento_1, documento_2, ...)":
-                    output_path = os.path.join(output_dir, generate_output_filename("documento", index + 1))
+                output_filename = self.filename_format.text()
+                for key, value in data.items():
+                    placeholder = f"{{{{{key}}}}}"
+                    if placeholder in output_filename:
+                        output_filename = output_filename.replace(placeholder, str(value).replace(" ", "_"))
+
+                if include_enumeration:
+                    output_filename = generate_output_filename(output_filename, index + 1)
                 else:
-                    output_filename = self.filename_format.text().replace("{{columna}}", str(data.get(selected_column, "")))
-                    output_path = os.path.join(output_dir, generate_output_filename(output_filename, index + 1))
+                    output_filename = f"{output_filename}.docx"
+
+                output_path = os.path.join(output_dir, output_filename)
                 
                 doc = doc_generator.generate_document(data)
                 doc_generator.save_document(doc, output_path)

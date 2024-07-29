@@ -1,10 +1,11 @@
 #utils.fileutils
 import os
+import re
 
-def create_output_directory(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
+def create_output_directory(directory_path):
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
 
-def generate_output_filename(base_name, index, extension='.docx'):
-    safe_base_name = "".join([c if c.isalnum() else "_" for c in str(base_name)])
-    return f"{safe_base_name}_{index}{extension}"
+def generate_output_filename(base_name, index):
+    sanitized_name = re.sub(r'\s+', '_', base_name)  # Reemplaza espacios con guiones bajos
+    return f"{sanitized_name}_{index}.docx"

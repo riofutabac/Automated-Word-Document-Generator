@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QPushButton, QHBoxLayout
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QCheckBox, QPushButton, QHBoxLayout, QMessageBox, QDateTimeEdit
+from PyQt6.QtCore import Qt, QDateTime
 
 class MissingColumnsDialog(QDialog):
     def __init__(self, missing_columns, parent=None):
@@ -12,8 +12,16 @@ class MissingColumnsDialog(QDialog):
         self.minute_checkboxes = {}
         self.hour_checkboxes = {}
 
-        self.minute_selected = False
-        self.hour_selected = False
+        # Bloque de selección de fecha y hora
+        datetime_layout = QHBoxLayout()
+        self.datetime_edit = QDateTimeEdit(QDateTime.currentDateTime())
+        self.datetime_edit.setDisplayFormat("dd/MM/yyyy HH:mm")
+        self.confirm_time_button = QPushButton("Confirmar minutos y hora actuales")
+        datetime_layout.addWidget(QLabel("Fecha y hora inicial:"))
+        datetime_layout.addWidget(self.datetime_edit)
+        datetime_layout.addWidget(self.confirm_time_button)
+        self.layout.addLayout(datetime_layout)
+        self.confirm_time_button.clicked.connect(self.lock_time_settings)
 
         for column in missing_columns:
             row_layout = QHBoxLayout()
@@ -29,9 +37,8 @@ class MissingColumnsDialog(QDialog):
             self.minute_checkboxes[column] = minute_checkbox
             self.hour_checkboxes[column] = hour_checkbox
 
-            increment_checkbox.stateChanged.connect(self.validate_checkboxes)
-            minute_checkbox.stateChanged.connect(self.validate_checkboxes)
-            hour_checkbox.stateChanged.connect(self.validate_checkboxes)
+            minute_checkbox.stateChanged.connect(lambda _, c=column: self.update_checkbox_state(c, "minute"))
+            hour_checkbox.stateChanged.connect(lambda _, c=column: self.update_checkbox_state(c, "hour"))
 
             row_layout.addWidget(label)
             row_layout.addWidget(input_field)
@@ -45,41 +52,48 @@ class MissingColumnsDialog(QDialog):
         self.confirm_button.clicked.connect(self.validate_and_accept)
         self.layout.addWidget(self.confirm_button)
 
-    def validate_checkboxes(self):
-        for column, minute_checkbox in self.minute_checkboxes.items():
-            hour_checkbox = self.hour_checkboxes[column]
-            if minute_checkbox.isChecked():
-                hour_checkbox.setChecked(False)
-                hour_checkbox.setEnabled(False)
-                self.minute_selected = True
-            else:
-                hour_checkbox.setEnabled(True)
-                self.minute_selected = False
+    def lock_time_settings(self):
+        self.datetime_edit.setEnabled(False)
+        self.confirm_time_button.setEnabled(False)
+        for minute_checkbox in self.minute_checkboxes.values():
+            minute_checkbox.setEnabled(False)
+        for hour_checkbox in self.hour_checkboxes.values():
+            hour_checkbox.setEnabled(False)
 
-        for column, hour_checkbox in self.hour_checkboxes.items():
-            minute_checkbox = self.minute_checkboxes[column]
-            if hour_checkbox.isChecked():
-                minute_checkbox.setChecked(False)
-                minute_checkbox.setEnabled(False)
-                self.hour_selected = True
+    def update_checkbox_state(self, column, type):
+        if type == "minute":
+            if self.minute_checkboxes[column].isChecked():
+                self.hour_checkboxes[column].setEnabled(False)
+                for key, checkbox in self.minute_checkboxes.items():
+                    if key != column:
+                        checkbox.setEnabled(False)
             else:
-                minute_checkbox.setEnabled(True)
-                self.hour_selected = False
+                self.hour_checkboxes[column].setEnabled(True)
+                for key, checkbox in self.minute_checkboxes.items():
+                    checkbox.setEnabled(True)
+
+        elif type == "hour":
+            if self.hour_checkboxes[column].isChecked():
+                self.minute_checkboxes[column].setEnabled(False)
+                for key, checkbox in self.hour_checkboxes.items():
+                    if key != column:
+                        checkbox.setEnabled(False)
+            else:
+                self.minute_checkboxes[column].setEnabled(True)
+                for key, checkbox in self.hour_checkboxes.items():
+                    checkbox.setEnabled(True)
 
     def validate_and_accept(self):
-        for column, input_field in self.inputs.items():
-            value = input_field.text()
-            if self.minute_checkboxes[column].isChecked() or self.hour_checkboxes[column].isChecked():
-                try:
-                    int(value)
-                except ValueError:
-                    QMessageBox.warning(self, "Error", f"El valor para '{column}' debe ser un número.")
-                    return
+        minute_checked = any(checkbox.isChecked() for checkbox in self.minute_checkboxes.values())
+        hour_checked = any(checkbox.isChecked() for checkbox in self.hour_checkboxes.values())
 
+        if not minute_checked and not hour_checked:
+            QMessageBox.warning(self, "Error", "Debe seleccionar al menos un campo como minuto u hora antes de confirmar.")
+            return
         self.accept()
 
     def get_values(self):
-        return {
+        values = {
             column: (
                 self.inputs[column].text(),
                 self.increment_checkboxes[column].isChecked(),
@@ -87,3 +101,6 @@ class MissingColumnsDialog(QDialog):
                 self.hour_checkboxes[column].isChecked()
             ) for column in self.missing_columns
         }
+        use_current_time = self.confirm_time_button.isEnabled()  # check if confirm button is still enabled
+        start_datetime = self.datetime_edit.dateTime().toPyDateTime()  # Get the datetime from QDateTimeEdit
+        return values, use_current_time, start_datetime
