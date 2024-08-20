@@ -1,0 +1,7 @@
+.venv/
+
+# Ignorar archivos .pyc
+*.pyc
+
+# Ignorar directorios de caché de Python
+__pycache__/
