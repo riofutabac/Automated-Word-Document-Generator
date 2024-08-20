@@ -10,6 +10,7 @@ from ui.missing_columns_dialog import MissingColumnsDialog
 import os
 from datetime import datetime
 from ui.pdf_conversion_widget import PDFConversionWidget  # Importa tu widget de conversión de PDF
+from ui.pdf_processing_widget import PDFProcessingWidget  # Importa correctamente tu widget de unir PDFs
 
 
 class MainWindow(QMainWindow):
@@ -23,12 +24,16 @@ class MainWindow(QMainWindow):
         main_menu = menubar.addMenu("Menú Principal")
         welcome_action = main_menu.addAction("Bienvenida")
         main_functionality_action = main_menu.addAction("Generador de Documentos")
-        pdf_conversion_action = main_menu.addAction("Conversión a PDF")  # Cambio de "Hola Mundo" a "Conversión a PDF"
+
+        pdf_conversion_action = main_menu.addAction("Conversión a PDF")
+        pdf_merge_action = main_menu.addAction("Unir PDFs")
 
         # Conectar las acciones del menú a las funciones correspondientes
         welcome_action.triggered.connect(self.show_welcome_screen)
         main_functionality_action.triggered.connect(self.show_main_functionality)
-        pdf_conversion_action.triggered.connect(self.show_pdf_conversion)  # Conectar la acción al nuevo método
+
+        pdf_conversion_action.triggered.connect(self.show_pdf_conversion)
+        pdf_merge_action.triggered.connect(self.show_pdf_merge)
 
         # Crear el QStackedWidget para gestionar las diferentes pantallas
         self.stacked_widget = QStackedWidget()
@@ -36,12 +41,15 @@ class MainWindow(QMainWindow):
         # Crear las diferentes pantallas
         self.welcome_screen = self.create_welcome_screen()
         self.main_functionality_screen = self.create_main_functionality_screen()
-        self.pdf_conversion_screen = PDFConversionWidget()  # Crear instancia del widget de conversión de PDF
+      
+        self.pdf_conversion_screen = PDFConversionWidget()
+        self.pdf_merge_screen = PDFProcessingWidget()  # Crear instancia del widget de unir PDFs
 
         # Añadir las pantallas al QStackedWidget
         self.stacked_widget.addWidget(self.welcome_screen)
-        self.stacked_widget.addWidget(self.main_functionality_screen)
         self.stacked_widget.addWidget(self.pdf_conversion_screen)
+        self.stacked_widget.addWidget(self.pdf_merge_screen)
+        self.stacked_widget.addWidget(self.main_functionality_screen)
 
         # Configurar la pantalla de bienvenida como la inicial
         self.setCentralWidget(self.stacked_widget)
@@ -127,7 +135,8 @@ class MainWindow(QMainWindow):
 
     def show_pdf_conversion(self):
         self.stacked_widget.setCurrentWidget(self.pdf_conversion_screen)  # Método para mostrar la pantalla de conversión de PDF
-
+    def show_pdf_merge(self):
+        self.stacked_widget.setCurrentWidget(self.pdf_merge_screen)
     # Aquí se incluyen las funciones originales relacionadas con la funcionalidad principal
     def load_word_template(self):
         self.word_template_path = load_word_file(self)
