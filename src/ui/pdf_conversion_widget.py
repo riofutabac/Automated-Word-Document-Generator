@@ -1,3 +1,4 @@
+# src/main.py (GUI)
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QListWidget, QFileDialog, QMessageBox, QProgressBar
 from core.pdf_converter import PDFConverter
 import os
@@ -43,12 +44,15 @@ class PDFConversionWidget(QWidget):
             return
 
         self.progress_bar.setValue(0)
-        converter = PDFConverter(max_workers=4)
+        converter = PDFConverter(max_workers=4, retry_attempts=3)
         total_files = len(self.files_to_convert)
 
         def update_progress(index, total):
             progress_percentage = int((index / total) * 100)
             self.progress_bar.setValue(progress_percentage)
 
-        converter.batch_convert_to_pdf(self.files_to_convert, output_dir, progress_callback=update_progress)
-        QMessageBox.information(self, "Proceso Completo", "Archivos convertidos exitosamente.")
+        try:
+            converter.batch_convert_to_pdf(self.files_to_convert, output_dir, progress_callback=update_progress)
+            QMessageBox.information(self, "Proceso Completo", "Archivos convertidos exitosamente.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error Crítico", f"Ocurrió un error durante la conversión: {e}")
