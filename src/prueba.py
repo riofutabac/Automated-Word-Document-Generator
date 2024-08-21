@@ -1,17 +1,16 @@
 import sys
 import os
 from PyQt6.QtWidgets import (
-    QWidget, QLabel, QVBoxLayout, QPushButton, QFileDialog, 
+    QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QFileDialog, 
     QMessageBox, QListWidget, QProgressBar
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from core.pdf_converter import PDFConverter
+from docx2pdf import convert
 
-class PDFConversionWidget(QWidget):
+class WordToPDFConverter(QWidget):
     def __init__(self):
         super().__init__()
-        self.converter = PDFConverter()
         self.initUI()
 
     def initUI(self):
@@ -59,7 +58,7 @@ class PDFConversionWidget(QWidget):
         # Botón para convertir archivos
         convert_button = QPushButton("Convertir a PDF", self)
         convert_button.setStyleSheet("background-color: #f44336; color: white; font-size: 14px;")
-        convert_button.clicked.connect(self.convert_files)
+        convert_button.clicked.connect(self.convert_to_pdf)
         self.layout.addWidget(convert_button)
 
         # Botón para limpiar la lista de archivos
@@ -95,7 +94,7 @@ class PDFConversionWidget(QWidget):
         self.total_files_label.setText("Total de archivos: 0")
         self.progress_bar.setValue(0)
 
-    def convert_files(self):
+    def convert_to_pdf(self):
         if not self.input_files:
             QMessageBox.warning(self, "No hay archivos", "Por favor, cargue al menos un archivo de Word para convertir.")
             return
@@ -108,14 +107,16 @@ class PDFConversionWidget(QWidget):
         for i, word_file_path in enumerate(self.input_files):
             pdf_file_name = os.path.splitext(os.path.basename(word_file_path))[0] + ".pdf"
             pdf_file_path = os.path.join(self.save_directory, pdf_file_name)
-            try:
-                self.converter.convert_to_pdf(word_file_path, pdf_file_path)
-                # Actualizar barra de progreso
-                progress = int((i + 1) / total_files * 100)
-                self.progress_bar.setValue(progress)
-            except Exception as e:
-                QMessageBox.critical(self, "Error crítico", f"Error durante la conversión de {word_file_path}: {e}")
-                break
+            convert(word_file_path, pdf_file_path)
+            # Actualizar barra de progreso
+            progress = int((i + 1) / total_files * 100)
+            self.progress_bar.setValue(progress)
 
         QMessageBox.information(self, "Conversión completada", "Los archivos han sido convertidos exitosamente.")
         self.clear_file_list()
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = WordToPDFConverter()
+    ex.show()
+    sys.exit(app.exec())
