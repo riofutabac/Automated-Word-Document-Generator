@@ -1,4 +1,10 @@
-from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget, QMessageBox, QLineEdit, QComboBox, QDialog, QLabel, QCheckBox, QHBoxLayout, QStackedWidget, QMenuBar, QMenu
+from PyQt6.QtWidgets import (
+    QMainWindow, QVBoxLayout, QPushButton, QWidget, QMessageBox, 
+    QLineEdit, QComboBox, QDialog, QLabel, QCheckBox, QHBoxLayout, 
+    QStackedWidget, QMenuBar, QMenu
+)
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont, QIcon
 from ui.file_loader import load_word_file, load_excel_file, select_output_directory
 from core.document_generator import DocumentGenerator
 from core.excel_parser import ExcelParser
@@ -17,7 +23,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Generador de Documentos")
-        self.setGeometry(100, 100, 600, 400)
+        self.setGeometry(100, 100, 800, 600)
 
         # Crear el menú de la barra de menús
         menubar = self.menuBar()
@@ -59,7 +65,10 @@ class MainWindow(QMainWindow):
     def create_welcome_screen(self):
         widget = QWidget()
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Bienvenido al Generador de Documentos"))
+        welcome_label = QLabel("Bienvenido al Generador de Documentos")
+        welcome_label.setFont(QFont("Arial", 18, QFont.Weight.Bold))
+        welcome_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(welcome_label)
         widget.setLayout(layout)
         return widget
 
@@ -67,10 +76,12 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout()
 
+        # Sección de carga de archivos
+        self.add_section_title(layout, "Carga de Archivos")
+
         # Botones de carga
-        self.load_word_btn = QPushButton("Cargar Plantilla Word")
-        self.load_excel_btn = QPushButton("Cargar Archivo Excel")
-        self.generate_btn = QPushButton("Generar Documentos")
+        self.load_word_btn = self.create_styled_button("Cargar Plantilla Word", "icons/word_icon.png")
+        self.load_excel_btn = self.create_styled_button("Cargar Archivo Excel", "icons/excel_icon.png")
 
         layout.addWidget(self.load_word_btn)
         layout.addWidget(self.load_excel_btn)
@@ -80,6 +91,9 @@ class MainWindow(QMainWindow):
         self.excel_file_label = QLabel("")
         layout.addWidget(self.word_file_label)
         layout.addWidget(self.excel_file_label)
+
+        # Sección de opciones de generación
+        self.add_section_title(layout, "Opciones de Generación de Documentos")
 
         # Formato de nombre de archivo
         self.filename_format = QLineEdit("documento")
@@ -111,6 +125,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.example_label)
 
         # Botón para generar documentos
+        self.generate_btn = self.create_styled_button("Generar Documentos", "icons/generate_icon.png")
         layout.addWidget(self.generate_btn)
 
         widget.setLayout(layout)
@@ -127,6 +142,33 @@ class MainWindow(QMainWindow):
 
         return widget
 
+    def add_section_title(self, layout, title):
+        title_label = QLabel(title)
+        title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(title_label)
+
+    def create_styled_button(self, text, icon_path=None):
+        button = QPushButton(text)
+        button.setFont(QFont("Arial", 14))
+        if icon_path:
+            button.setIcon(QIcon(icon_path))
+        button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50; 
+                color: white;
+                border-radius: 5px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #388E3C;
+            }
+        """)
+        return button
+
     def show_welcome_screen(self):
         self.stacked_widget.setCurrentWidget(self.welcome_screen)
 
@@ -137,6 +179,7 @@ class MainWindow(QMainWindow):
         self.stacked_widget.setCurrentWidget(self.pdf_conversion_screen)  # Método para mostrar la pantalla de conversión de PDF
     def show_pdf_merge(self):
         self.stacked_widget.setCurrentWidget(self.pdf_merge_screen)
+
     # Aquí se incluyen las funciones originales relacionadas con la funcionalidad principal
     def load_word_template(self):
         self.word_template_path = load_word_file(self)
