@@ -139,15 +139,6 @@ class MissingColumnsDialog(QDialog):
                 self.numeric_checkboxes[column].isChecked()
             ) for column in self.missing_columns
         }
-        use_current_time = any([
-            self.minute_checkboxes[column].isChecked() or
-            self.hour_checkboxes[column].isChecked() or
-            self.increment_checkboxes[column].isChecked()
-            for column in self.missing_columns
-        ])  # Only use the current time if any related checkbox is checked
-
-        # Imprimir el valor de use_current_time
-        print(f"use_current_time: {use_current_time}")
-
-        start_datetime = self.datetime_edit.dateTime().toPyDateTime() if use_current_time else None
+        use_current_time = self.confirm_time_button.isEnabled()  # check if confirm button is still enabled
+        start_datetime = self.datetime_edit.dateTime().toPyDateTime()  # Get the datetime from QDateTimeEdit
         return values, use_current_time, start_datetime

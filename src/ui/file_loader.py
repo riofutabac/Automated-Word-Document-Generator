@@ -7,7 +7,7 @@ def load_word_file(parent):
     return file_name
 
 def load_excel_file(parent):
-    file_name, _ = QFileDialog.getOpenFileName(parent, "Seleccionar Archivo Excel", "", "Excel Files (*.xlsx *.xls)")
+    file_name, _ = QFileDialog.getOpenFileName(parent, "Seleccionar Archivo Excel", "", "Excel Files (*.xlsx *.xls *.xlsm)")
     return file_name
 
 def select_output_directory(parent):
